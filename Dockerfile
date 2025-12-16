@@ -10,8 +10,8 @@ COPY package*.json ./
 # 全局安装指定版本的 npm
 RUN npm install -g npm@11.3.0
 
-# 安装生产依赖
-RUN npm install --omit=dev
+# 安装生产依赖（跳过prepare脚本，避免安装devDependencies）
+RUN npm install --omit=dev --ignore-scripts
 
 # 第二阶段构建 - 只复制必要文件
 FROM node:22-alpine
