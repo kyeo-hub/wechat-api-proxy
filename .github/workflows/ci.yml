@@ -6,6 +6,11 @@ on:
   pull_request:
     branches: [ main ]
 
+# 设置工作流权限
+permissions:
+  contents: read
+  security-events: write
+
 env:
   NODE_VERSION: '18'
   REGISTRY: ghcr.io
