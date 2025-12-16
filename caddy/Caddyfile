@@ -1,0 +1,140 @@
+{
+    # 全局配置
+    admin {
+        # 禁用管理API，生产环境应该关闭
+        disabled
+    }
+    
+    # 日志配置
+    log {
+        output file /var/log/caddy/access.log {
+            roll_size 100mb
+            roll_keep 10
+            roll_keep_for 720h
+        }
+        format json
+    }
+    
+    # 邮件配置（可选，用于证书问题通知）
+    # email your-email@example.com
+    
+    # 自动HTTPS
+    auto_https {
+        # 重定向HTTP到HTTPS
+        disable_redirects
+    }
+}
+
+# 主站点配置
+your-domain.com {
+    # HTTP重定向到HTTPS
+    @http {
+        protocol http
+    }
+    redir @http https://{host}{uri} permanent
+    
+    # API代理配置
+    handle /api/* {
+        reverse_proxy wechat-api-proxy:3000 {
+            # 健康检查
+            health_uri /api/cache/status
+            health_interval 30s
+            health_timeout 10s
+            health_status 200
+            
+            # 超时设置
+            transport http {
+                read_timeout 30s
+                write_timeout 30s
+                dial_timeout 10s
+            }
+            
+            # 错误处理
+            fail_duration 30s
+            
+            # 请求头
+            header_up Host {http.reverse_proxy.upstream.hostport}
+            header_up X-Real-IP {http.request.remote.host}
+            header_up X-Forwarded-For {http.request.remote.host}
+            header_up X-Forwarded-Proto {http.request.scheme}
+        }
+        
+        # CORS头
+        header {
+            Access-Control-Allow-Origin "*"
+            Access-Control-Allow-Methods "GET, POST, PUT, DELETE, OPTIONS"
+            Access-Control-Allow-Headers "Content-Type, Authorization, X-Requested-With"
+            Access-Control-Max-Age "86400"
+        }
+        
+        # 预检请求处理
+        method OPTIONS {
+            respond "" 204
+        }
+    }
+    
+    # 根路径和静态文件
+    handle /* {
+        # 如果有前端静态文件，可以在这里配置
+        root * /srv
+        try_files {path} {path}/index.html
+        file_server
+        
+        # 安全头
+        header {
+            X-Content-Type-Options nosniff
+            X-XSS-Protection "1; mode=block"
+            X-Frame-Options DENY
+            Referrer-Policy strict-origin-when-cross-origin
+            Content-Security-Policy "default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data: https:; font-src 'self'; connect-src 'self'"
+        }
+    }
+    
+    # 健康检查端点（不记录日志）
+    handle /health {
+        respond "" 200
+        log {
+            output discard
+        }
+    }
+}
+
+# 可选：API子域名配置
+api.your-domain.com {
+    # 与主站点相同的API配置
+    handle /api/* {
+        reverse_proxy wechat-api-proxy:3000 {
+            health_uri /api/cache/status
+            health_interval 30s
+            health_timeout 10s
+            health_status 200
+            
+            transport http {
+                read_timeout 30s
+                write_timeout 30s
+                dial_timeout 10s
+            }
+            
+            header_up Host {http.reverse_proxy.upstream.hostport}
+            header_up X-Real-IP {http.request.remote.host}
+            header_up X-Forwarded-For {http.request.remote.host}
+            header_up X-Forwarded-Proto {http.request.scheme}
+        }
+        
+        header {
+            Access-Control-Allow-Origin "*"
+            Access-Control-Allow-Methods "GET, POST, PUT, DELETE, OPTIONS"
+            Access-Control-Allow-Headers "Content-Type, Authorization, X-Requested-With"
+            Access-Control-Max-Age "86400"
+        }
+        
+        method OPTIONS {
+            respond "" 204
+        }
+    }
+    
+    # 简单的API文档页面
+    handle /* {
+        respond "微信API代理服务器运行正常<br><a href='https://github.com/kyeo-hub/wechat-api-proxy' target='_blank'>查看文档</a>" 200
+    }
+}

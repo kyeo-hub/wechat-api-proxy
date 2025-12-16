@@ -142,7 +142,7 @@ jobs:
       run: |
         echo "Deploying to development environment"
         echo "Image: ${{ needs.build-image.outputs.image }}"
-        # 这里添加实际的部署脚本，比如：
+        # 使用Caddy进行部署
         # - 使用docker-compose部署
         # - 更新Kubernetes配置
         # - 或者调用部署API
@@ -157,9 +157,9 @@ jobs:
     steps:
     - name: Deploy to production
       run: |
-        echo "Deploying to production environment"
+        echo "Deploying to production environment with Caddy"
         echo "Image: ${{ needs.build-image.outputs.image }}"
-        # 这里添加实际的生产环境部署脚本
+        # 使用Caddy进行生产环境部署
 
   # 通知部署结果
   notify:

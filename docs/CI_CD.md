@@ -160,6 +160,42 @@ export IMAGE_TAG=v1.0.0
 export REDIS_PASSWORD=your-redis-password
 ```
 
+## Caddy配置
+
+我们使用Caddy作为反向代理和HTTPS终端，相比Nginx，Caddy提供了更简单的配置和自动HTTPS证书管理。
+
+### Caddy主要特点
+
+1. **自动HTTPS** - 自动获取和续期SSL证书
+2. **简单配置** - 使用Caddyfile进行声明式配置
+3. **内置健康检查** - 对后端服务进行健康检查
+4. **低资源占用** - 相比Nginx更轻量级
+
+### 配置文件
+
+`caddy/Caddyfile` - 主配置文件，包含：
+- 全局设置（日志、HTTPS等）
+- 站点配置（API代理、静态文件等）
+- CORS和安全头设置
+
+### 自定义配置
+
+如果您需要自定义Caddy配置：
+
+1. 修改`caddy/Caddyfile.template`文件
+2. 运行初始化脚本：
+   ```bash
+   ./scripts/setup-caddy.sh init
+   ```
+
+### 证书管理
+
+Caddy会自动从Let's Encrypt获取和续期证书。如果您需要手动触发证书获取：
+
+```bash
+./scripts/setup-caddy.sh cert
+```
+
 ## 监控和告警
 
 ### 健康检查

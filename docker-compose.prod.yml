@@ -56,16 +56,18 @@ services:
       retries: 3
       start_period: 30s
 
-  nginx:
-    container_name: nginx-proxy
-    image: nginx:alpine
+  caddy:
+    container_name: caddy-proxy
+    image: caddy:2-alpine
     restart: unless-stopped
     ports:
       - "80:80"
       - "443:443"
     volumes:
-      - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
-      - ./nginx/ssl:/etc/nginx/ssl:ro
+      - ./caddy/Caddyfile:/etc/caddy/Caddyfile:ro
+      - ./caddy/site:/srv:ro
+      - caddy-data:/data
+      - caddy-config:/config
     depends_on:
       - wechat-api-proxy
     networks:
@@ -79,6 +81,8 @@ services:
 
 volumes:
   redis-data:
+  caddy-data:
+  caddy-config:
 
 networks:
   wechat-network:

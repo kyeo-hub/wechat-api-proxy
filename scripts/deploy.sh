@@ -63,7 +63,16 @@ deploy_new() {
     sed -i "s|image: wechat-api-proxy:.*|image: wechat-api-proxy:$IMAGE_TAG|g" docker-compose.yml
     
     # 上传文件到服务器
-    scp docker-compose.yml $TARGET_USER@$TARGET_HOST:/opt/wechat-api-proxy/
+    scp docker-compose.prod.yml $TARGET_USER@$TARGET_HOST:/opt/wechat-api-proxy/docker-compose.yml
+    
+    # 初始化Caddy配置（如果不存在）
+    if [ ! -f caddy/Caddyfile ]; then
+        export DOMAIN=$(echo $TARGET_HOST | sed 's/^www\.//')
+        ./scripts/setup-caddy.sh init
+    fi
+    
+    # 上传Caddy配置
+    scp -r caddy/ $TARGET_USER@$TARGET_HOST:/opt/wechat-api-proxy/
     
     # 拉取新镜像并启动服务
     ssh $TARGET_USER@$TARGET_HOST "cd /opt/wechat-api-proxy && \
