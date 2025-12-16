@@ -1,12 +1,12 @@
 // 日志工具模块
-const winston = require('winston')
-const path = require('path')
+const winston = require('winston');
+const path = require('path');
 
 // 确保日志目录存在
-const logDir = 'logs'
-const fs = require('fs')
+const logDir = 'logs';
+const fs = require('fs');
 if (!fs.existsSync(logDir)) {
-  fs.mkdirSync(logDir)
+  fs.mkdirSync(logDir);
 }
 
 // 定义日志格式
@@ -17,9 +17,9 @@ const logFormat = winston.format.combine(
   winston.format.errors({ stack: true }),
   winston.format.json(),
   winston.format.printf(({ timestamp, level, message, stack }) => {
-    return `${timestamp} [${level.toUpperCase()}]: ${stack || message}`
+    return `${timestamp} [${level.toUpperCase()}]: ${stack || message}`;
   })
-)
+);
 
 // 创建Winston日志记录器
 const logger = winston.createLogger({
@@ -41,7 +41,7 @@ const logger = winston.createLogger({
       maxFiles: 5,
     }),
   ],
-})
+});
 
 // 在非生产环境，也输出到控制台
 if (process.env.NODE_ENV !== 'production') {
@@ -50,10 +50,10 @@ if (process.env.NODE_ENV !== 'production') {
       winston.format.colorize(),
       winston.format.simple(),
       winston.format.printf(({ timestamp, level, message, stack }) => {
-        return `${timestamp} [${level}]: ${stack || message}`
+        return `${timestamp} [${level}]: ${stack || message}`;
       })
     )
-  }))
+  }));
 }
 
-module.exports = logger
+module.exports = logger;
