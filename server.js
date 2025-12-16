@@ -29,7 +29,21 @@ async function initializeServices() {
 }
 
 // 在应用启动时初始化服务
-initializeServices()
+async function startApplication() {
+  // 执行预启动检查
+  const { main: preStartCheck } = require('./scripts/prestart')
+  const preStartSuccess = preStartCheck()
+  
+  if (!preStartSuccess) {
+    logger.error('预启动检查失败，应用启动中止')
+    process.exit(1)
+  }
+  
+  // 初始化服务
+  await initializeServices()
+}
+
+startApplication()
 
 // Configure multer for file uploads
 const storage = multer.diskStorage({

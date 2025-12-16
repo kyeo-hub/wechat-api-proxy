@@ -4,17 +4,21 @@ const logger = require('../utils/logger')
 
 // Redis客户端配置
 const redisOptions = {
-  host: process.env.REDIS_HOST || 'localhost',
-  port: process.env.REDIS_PORT || 6379,
+  socket: {
+    host: process.env.REDIS_HOST || 'localhost',
+    port: process.env.REDIS_PORT || 6379,
+    reconnectStrategy: (retries) => {
+      if (retries > 10) {
+        logger.error('Redis重连次数超过限制，停止重连')
+        return new Error('Redis重连失败')
+      }
+      return Math.min(retries * 50, 1000)
+    },
+    connectTimeout: 10000,
+    commandTimeout: 5000,
+  },
   password: process.env.REDIS_PASSWORD || undefined,
-  db: process.env.REDIS_DB || 0,
-  retryDelayOnFailover: 100,
-  enableReadyCheck: true,
-  maxRetriesPerRequest: null,
-  lazyConnect: true,
-  keepAlive: 30000,
-  connectTimeout: 10000,
-  commandTimeout: 5000,
+  database: process.env.REDIS_DB || 0,
 }
 
 // 创建Redis客户端
