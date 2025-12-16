@@ -32,5 +32,9 @@ USER node
 # 暴露端口
 EXPOSE 3000
 
+# 健康检查
+HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \
+  CMD node healthcheck.js
+
 # 启动应用
 CMD ["node", "server.js"]

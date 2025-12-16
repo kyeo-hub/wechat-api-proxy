@@ -9,8 +9,27 @@ const fs = require("fs")
 const path = require("path")
 const os = require("os")
 
+// 导入自定义模块
+const logger = require("./utils/logger")
+const cacheService = require("./config/cache")
+const wechatCache = require("./services/wechatCache")
+const cacheMonitor = require("./middleware/cacheMonitor")
+
 const app = express()
 const PORT = process.env.PORT || 3000
+
+// 初始化缓存服务
+async function initializeServices() {
+  try {
+    await cacheService.connect()
+    logger.info("服务初始化完成")
+  } catch (error) {
+    logger.error("服务初始化失败:", error)
+  }
+}
+
+// 在应用启动时初始化服务
+initializeServices()
 
 // Configure multer for file uploads
 const storage = multer.diskStorage({
@@ -32,13 +51,14 @@ app.use(cors())
 app.use(morgan("dev"))
 app.use(express.json())
 app.use(express.urlencoded({ extended: true }))
+app.use(cacheMonitor)
 
 // Health check endpoint
 app.get("/", (req, res) => {
   res.json({ status: "ok", message: "通用微信API代理服务器运行中" })
 })
 
-// 获取access_token
+// 获取access_token（带缓存）
 app.get("/api/token", async (req, res) => {
   try {
     const { appid, secret } = req.query
@@ -47,13 +67,19 @@ app.get("/api/token", async (req, res) => {
       return res.status(400).json({ error: "缺少appid或secret参数" })
     }
 
-    const response = await axios.get(
-      `https://api.weixin.qq.com/cgi-bin/token?grant_type=client_credential&appid=${appid}&secret=${secret}`
-    )
-
-    res.json(response.data)
+    // 使用缓存机制获取或刷新access_token
+    const tokenData = await wechatCache.getOrRefreshAccessToken(appid, secret)
+    
+    // 只返回必要的信息，不返回内部使用的过期时间戳
+    const response = {
+      access_token: tokenData.access_token,
+      expires_in: tokenData.expires_in
+    }
+    
+    logger.info(`成功获取access_token: ${appid}`)
+    res.json(response)
   } catch (error) {
-    console.error("获取access_token失败:", error.response?.data || error.message)
+    logger.error(`获取access_token失败: ${req.query.appid}`, error.response?.data || error.message)
     res.status(error.response?.status || 500).json({
       error: "获取access_token失败",
       details: error.response?.data || error.message,
@@ -696,7 +722,106 @@ app.post("/api/publish-news", upload.single("thumb_media"), async (req, res) => 
   }
 })
 
-// 启动服务器
-app.listen(PORT, () => {
-  console.log(`通用微信API代理服务器运行在端口 ${PORT}`)
+// 缓存管理API
+app.get("/api/cache/status", async (req, res) => {
+  try {
+    const cacheStats = await wechatCache.getCacheStats()
+    res.json({
+      success: true,
+      data: cacheStats
+    })
+  } catch (error) {
+    logger.error("获取缓存状态失败:", error.message)
+    res.status(500).json({
+      error: "获取缓存状态失败",
+      details: error.message
+    })
+  }
 })
+
+// 清理缓存
+app.post("/api/cache/clear", async (req, res) => {
+  try {
+    const { appid, type = "all" } = req.query
+    
+    let result
+    
+    switch(type) {
+      case "token":
+        result = await wechatCache.deleteAccessToken(appid)
+        logger.info(`已清理access_token缓存: ${appid}`)
+        break
+      case "material":
+        const { media_id } = req.body
+        result = await wechatCache.deleteMaterialCache(media_id)
+        logger.info(`已清理素材缓存: ${media_id}`)
+        break
+      case "draft":
+        const { media_id: draftMediaId } = req.body
+        result = await wechatCache.deleteDraftCache(draftMediaId)
+        logger.info(`已清理草稿缓存: ${draftMediaId}`)
+        break
+      case "wechat":
+        result = await wechatCache.clearAllWeChatCache()
+        logger.info("已清理所有微信相关缓存")
+        break
+      case "all":
+        result = await cacheService.flush()
+        logger.info("已清理所有缓存")
+        break
+      default:
+        return res.status(400).json({
+          error: "无效的缓存类型",
+          details: "支持的类型: token, material, draft, wechat, all"
+        })
+    }
+    
+    res.json({
+      success: true,
+      message: `缓存清理成功`,
+      type: type,
+      result: result
+    })
+  } catch (error) {
+    logger.error("清理缓存失败:", error.message)
+    res.status(500).json({
+      error: "清理缓存失败",
+      details: error.message
+    })
+  }
+})
+
+// 启动服务器
+const server = app.listen(PORT, () => {
+  logger.info(`通用微信API代理服务器运行在端口 ${PORT}`)
+})
+
+// 优雅关闭处理
+process.on('SIGTERM', gracefulShutdown)
+process.on('SIGINT', gracefulShutdown)
+
+async function gracefulShutdown(signal) {
+  logger.info(`收到信号 ${signal}，开始优雅关闭服务器...`)
+  
+  server.close(async () => {
+    logger.info('HTTP服务器已关闭')
+    
+    try {
+      // 关闭Redis连接
+      await cacheService.disconnect()
+      logger.info('Redis连接已关闭')
+      
+      logger.info('优雅关闭完成')
+      process.exit(0)
+    } catch (error) {
+      logger.error('优雅关闭过程中发生错误:', error)
+      process.exit(1)
+    }
+  })
+  
+  // 强制关闭超时
+  setTimeout(() => {
+    logger.error('强制关闭服务器，未能在规定时间内完成优雅关闭')
+    process.exit(1)
+  }, 10000)
+}
