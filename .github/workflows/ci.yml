@@ -9,6 +9,7 @@ on:
 # 设置工作流权限
 permissions:
   contents: read
+  packages: write
   security-events: write
 
 env:
