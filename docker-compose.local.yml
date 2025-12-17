@@ -3,13 +3,13 @@ version: '3.8'
 services:
   wechat-api-proxy:
     container_name: wechat-api
-    image: ghcr.io/kyeo-hub/wechat-api-proxy:main
+    image: wechat-api:latest
     restart: unless-stopped
     environment:
       - NODE_ENV=production
       - LOG_LEVEL=warn
       # Redis配置
-      - REDIS_HOST=redis
+      - REDIS_HOST=192.168.0.4
       - REDIS_PORT=6379
       - REDIS_DB=0
     volumes:
