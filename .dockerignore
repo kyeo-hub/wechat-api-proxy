@@ -7,3 +7,12 @@ node_modules
 .github
 coverage
 .env*
+Dockerfile*
+docker-compose*
+*.yml
+*.yaml
+.vscode
+.idea
+test/
+*.test.js
+*.spec.js
