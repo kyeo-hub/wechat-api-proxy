@@ -13,7 +13,7 @@ permissions:
   security-events: write
 
 env:
-  NODE_VERSION: '18'
+  NODE_VERSION: '22'
   REGISTRY: ghcr.io
   IMAGE_NAME: ${{ github.repository }}
 
@@ -124,7 +124,7 @@ jobs:
       uses: docker/build-push-action@v5
       with:
         context: .
-        platforms: linux/amd64,linux/arm64
+        platforms: linux/amd64
         push: ${{ github.event_name != 'pull_request' }}
         tags: ${{ steps.meta.outputs.tags }}
         labels: ${{ steps.meta.outputs.labels }}

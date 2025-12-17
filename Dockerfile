@@ -25,6 +25,9 @@ COPY --from=builder /app/node_modules ./node_modules
 # 复制项目文件 (添加 .dockerignore 文件来排除不必要的文件)
 COPY . .
 
+# 创建必要的目录
+RUN mkdir -p logs /tmp/wechat-proxy-uploads
+
 # 使用非root用户运行
 RUN chown -R node:node /app
 USER node
@@ -32,8 +35,8 @@ USER node
 # 暴露端口
 EXPOSE 3000
 
-# 健康检查
-HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \
+# 健康检查 - 增加超时时间和开始周期，适应CI环境
+HEALTHCHECK --interval=30s --timeout=10s --start-period=40s --retries=3 \
   CMD node healthcheck.js
 
 # 启动应用
